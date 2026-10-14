@@ -1,0 +1,26 @@
+{
+  "name": "Artefact agentic commerce audit agent (read-only)",
+  "description": "Test agent used by Artefact to audit agent-facing product catalogues. Catalog search and lookup only; never creates carts, checkouts or orders.",
+  "contact": "https://github.com/woutervisser-lab/ucp-agent-profile",
+  "ucp": {
+    "version": "2026-08-25",
+    "services": {},
+    "capabilities": {
+      "dev.ucp.shopping.catalog.search": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/catalog/",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_search.json"
+        }
+      ],
+      "dev.ucp.shopping.catalog.lookup": [
+        {
+          "version": "2026-08-25",
+          "spec": "https://ucp.dev/2026-08-25/specification/shopping/catalog/",
+          "schema": "https://ucp.dev/2026-08-25/schemas/shopping/catalog_lookup.json"
+        }
+      ]
+    },
+    "payment_handlers": {}
+  }
+}
