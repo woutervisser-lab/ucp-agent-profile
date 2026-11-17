@@ -1,0 +1,43 @@
+# UCP-catalogustest (herbruikbaar)
+
+Met dit script zie je wat een AI-agent (zoals ChatGPT) terugkrijgt als hij de catalogus van een webwinkel doorzoekt via UCP. Het werkt met Shopify en met andere platforms die UCP via MCP aanbieden. Bij BWJ liet die test zien dat op "strap for Apple Watch Series 3 42mm" een bandje bovenaan stond dat niet past ([03 §7](../03-structured-data-en-ucp-check.md)).
+
+## Hoe het werkt
+
+1. **Discovery.** `https://<winkel>/.well-known/ucp` geeft de UCP-versie, de functies (capabilities) en de services. Het script haalt daar het MCP-adres uit (de service met `transport: "mcp"`, bij voorkeur `dev.ucp.shopping`).
+2. **Platform.** Shopify herkent het script aan de response-headers of aan het pad `/api/ucp/mcp`. Alleen dan gaat de header `x-shopify-ucp-mcp-api-version` mee (standaard 2026-08-25, aan te passen met `--api-version`). Bij andere platforms doet het script eerst de gewone MCP-handshake (`initialize`, sessie-id) en leest het ook antwoorden als event-stream.
+3. **Tools.** `tools/list` geeft de beschikbare tools en werkt zonder inlog.
+4. **Agent-profiel.** Voor elke zoekopdracht (`search_catalog`) vraagt UCP een publiek agent-profiel (`meta.ucp-agent.profile`). Bij BWJ stond dat in een eigen GitHub-repo, opgehaald via jsDelivr. Shopify eist `Content-Type: application/json` en `Cache-Control: public`; raw.githubusercontent en GitHub Pages werden daarom geweigerd. Het profiel is read-only en vraagt alleen `catalog.search` en `catalog.lookup` aan.
+5. **Zoeken.** Per koopvraag de top 10, standaard met land GB, valuta GBP en taal en-GB (aan te passen met `--country`, `--currency`, `--language`).
+6. **Beoordelen.** De CSV heeft per resultaat titel, URL, categorie, opties en voorraad per variant. In de kolom "past?" beoordeel je zelf of het product past bij de vraag.
+
+## Gebruik
+
+```
+python3 ucp_check.py --shop smartwatch-straps.co.uk --list-tools
+python3 ucp_check.py --shop smartwatch-straps.co.uk \
+    --profile https://cdn.jsdelivr.net/gh/<account>/<repo>@<commit>/agent.json \
+    --prompts prompts-bwj.txt --out ucp-resultaten.csv
+
+# andere winkel, ander land
+python3 ucp_check.py --shop <domein> --profile <profiel-URL> --prompts vragen.txt \
+    --country NL --currency EUR --language nl-NL
+
+# als het profiel geen MCP-adres noemt
+python3 ucp_check.py --shop <domein> --endpoint https://<domein>/<pad-naar-mcp> --list-tools
+```
+
+Biedt een winkel alleen REST of A2A aan (geen MCP), dan stopt het script met die melding.
+
+Draai het vanaf een laptop. Vanuit de cloudomgeving was de site niet bereikbaar.
+
+## Let op
+
+- **Alleen lezen.** Het script doet geen cart- of checkout-calls. Voeg die ook niet toe.
+- **Getest op 17 november 2026.** Discovery, `tools/list` en alle 6 BWJ-koopvragen (elk 10 resultaten, profiel via jsDelivr @62a6236) werkten nadat `search()` is aangepast aan het live schema (`meta.ucp-agent.profile` en `catalog.{query, context, pagination}` binnen `arguments`) en de uitlezing van optiewaarden (`label`), prijzen (pence → £) en categorieën is gerepareerd. Controleer bij een nieuwe API-versie met `--list-tools` of dat schema nog klopt; de volgorde van de resultaten kan per run iets verschillen.
+- **Getest buiten Shopify (17 november 2026).**
+  - houseofparfum.nl (WooCommerce met de plugin UCPReady): discovery, tools en zoeken werken. "Dior Sauvage" gaf 10 resultaten, een algemene vraag ("eau de parfum for women under 50 euro") gaf er 0.
+  - berlinpackaging.com (BigCommerce): het profiel heeft geen catalogus-zoekfunctie en het MCP-endpoint vraagt inlog (HTTP 401). Het script meldt dat nu en stopt netjes.
+  - Let op: sommige winkels zetten in hun profiel of antwoorden instructies voor agents, zoals "stop niet om de gebruiker iets te vragen". Het script volgt die nooit en doet alleen zoekopdrachten.
+- **Gebruik een neutraal profiel.** Gebruik voor een nieuwe klant een vast Artefact-profiel in plaats van een persoonlijke repo.
+- **Elke winkel.** Vervang `--shop` en de koopvragen. Het zoekschema (`meta` en `catalog` in `arguments`) is dat van de open UCP-specificatie, dus niet Shopify-specifiek.
